@@ -1,0 +1,6 @@
+@LibraryBookLendingSystem_8._0__HostAddress = http://localhost:5112
+
+GET {{LibraryBookLendingSystem_8._0__HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
