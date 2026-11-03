@@ -13,7 +13,22 @@
 
   <ItemGroup>
     <Folder Include="Controllers\" />
-    <Folder Include="Models\" />
+    <Folder Include="Data\" />
+    <Folder Include="Database\" />
+    <Folder Include="Exceptions\" />
+    <Folder Include="Filters\" />
+    <Folder Include="Middleware\" />
+    <Folder Include="Models\DTOs\Auth\" />
+    <Folder Include="Models\DTOs\Books\" />
+    <Folder Include="Models\DTOs\Loans\" />
+    <Folder Include="Models\DTOs\Members\" />
+    <Folder Include="Models\Entities\" />
+    <Folder Include="Validators\" />
+    <Folder Include="Security\" />
+    <Folder Include="Repositories\Interfaces\" />
+    <Folder Include="Repositories\Implementations\" />
+    <Folder Include="Services\Interfaces\" />
+    <Folder Include="Services\Implementations\" />
   </ItemGroup>
 
 </Project>
