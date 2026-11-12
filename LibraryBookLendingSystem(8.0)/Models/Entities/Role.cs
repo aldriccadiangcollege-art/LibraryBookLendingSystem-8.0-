@@ -1,4 +1,4 @@
-﻿using LibraryBookLendingSystem_8._0_.Models.Entities;
+﻿using LibraryBookLendingSystem.Models.Entities;
 using System.Collections.Generic;
 
 namespace LibraryBookLendingSystem.Models.Entities
