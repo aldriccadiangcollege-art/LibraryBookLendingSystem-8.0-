@@ -25,7 +25,6 @@
     <Folder Include="Models\DTOs\Books\" />
     <Folder Include="Models\DTOs\Loans\" />
     <Folder Include="Models\DTOs\Members\" />
-    <Folder Include="Models\Entities\" />
     <Folder Include="Validators\" />
     <Folder Include="Security\" />
     <Folder Include="Repositories\Interfaces\" />
