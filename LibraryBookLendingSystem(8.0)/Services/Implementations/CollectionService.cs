@@ -1,6 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using LibraryBookLendingSystem.Data;
-using LibraryBookLendingSystem_8._0_.Models.DTOs.Books;
+using LibraryBookLendingSystem_8._0_.Models.DTOs.Books; 
+using LibraryBookLendingSystem_8._0_.Validators;
 using LibraryBookLendingSystem_8._0_.Services.Interfaces;
 using LibraryBookLendingSystem.Services.Interfaces;
 
