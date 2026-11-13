@@ -1,13 +1,12 @@
-﻿using LibraryBookLendingSystem.Models.Entities;
-using System.Collections.Generic;
+﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
-namespace LibraryBookLendingSystem.Models.Entities
+namespace LibraryBookLendingSystem.Models.Entities;
+
+[Table("Roles")]
+public class Role
 {
-    public class Role
-    {
-        public int RoleId { get; set; }
-        public string RoleName { get; set; } = null!;
-
-        public ICollection<UserRole> UserRoles { get; set; } = new List<UserRole>();
-    }
+    [Key] public int RoleId { get; set; }
+    [Required, MaxLength(50)] public string RoleName { get; set; } = string.Empty;
+    public ICollection<UserRole> UserRoles { get; set; } = new List<UserRole>();
 }
