@@ -61,6 +61,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     });
 
 builder.Services.AddAuthorization();
+builder.Services.AddScoped<LibraryBookLendingSystem.Security.JwtTokenService>();
 
 var app = builder.Build();
 
