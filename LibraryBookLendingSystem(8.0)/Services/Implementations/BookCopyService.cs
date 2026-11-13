@@ -1,8 +1,9 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using LibraryBookLendingSystem_8._0_.Data;
 using LibraryBookLendingSystem_8._0_.Models.DTOs.Books;
-using LibraryBookLendingSystem_8._0_.Services.Implementations;
+using LibraryBookLendingSystem_8._0_.Services.Interfaces;
 using LibraryBookLendingSystem_8._0_.Models.Entities;
+
 
 namespace LibraryBookLendingSystem_8._0_.Services.Implementations
 {
