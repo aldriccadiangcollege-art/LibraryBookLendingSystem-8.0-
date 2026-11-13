@@ -1,22 +1,27 @@
-﻿using System;
+﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
-namespace LibraryBookLendingSystem.Models.Entities
+namespace LibraryBookLendingSystem.Models.Entities;
+
+[Table("Loans")]
+public class Loan
 {
-    public class Loan
-    {
-        public int LoanId { get; set; }
-        public int BorrowerId { get; set; }
-        public Borrower Borrower { get; set; } = null!;
-        public int CopyId { get; set; }
-        public BookCopy BookCopy { get; set; } = null!;
-        public int IssuedBy { get; set; }
-        public User IssuedByUser { get; set; } = null!;
-        public DateOnly LoanDate { get; set; }
-        public DateOnly DueDate { get; set; }
-        public DateOnly? ReturnDate { get; set; }
-        public int? ReceivedBy { get; set; }
-        public User? ReceivedByUser { get; set; }
-        public decimal FineAmount { get; set; } = 0;
-        public DateOnly? FinePaidOn { get; set; }
-    }
+    [Key] public int LoanId { get; set; }
+
+    public int BorrowerId { get; set; }
+    [ForeignKey(nameof(BorrowerId))] public Borrower? Borrower { get; set; }
+
+    public int CopyId { get; set; }
+    [ForeignKey(nameof(CopyId))] public BookCopy? Copy { get; set; }
+
+    public int IssuedBy { get; set; }
+
+    public DateTime LoanDate { get; set; } = DateTime.Today;
+    public DateTime DueDate { get; set; }
+    public DateTime? ReturnDate { get; set; }
+
+    public int? ReceivedBy { get; set; }
+
+    [Column(TypeName = "decimal(10,2)")] public decimal FineAmount { get; set; } = 0m;
+    public DateTime? FinePaidOn { get; set; }
 }
