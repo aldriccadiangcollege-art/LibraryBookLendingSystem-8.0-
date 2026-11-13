@@ -1,0 +1,72 @@
+﻿<!DOCTY<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Search the Catalog</title>
+<link rel="stylesheet" href="css/catalog.css">
+</head>
+<body>
+<header class="topbar"><strong>Library</strong><nav><a href="catalog.html">Search catalog</a><a href="admin-books.html">Manage books</a><a href="collection-review.html">Collection review</a></nav></header>
+<main>
+  <h1>Search the catalog</h1>
+  <div class="toolbar">
+    <input id="term" type="search" placeholder="Title, author, category or ISBN" autofocus>
+  </div>
+  <div id="msg" class="msg" hidden></div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Title</th><th>Author</th><th>Category</th><th>Year</th><th>Shelf</th><th>Availability</th></tr></thead>
+      <tbody id="rows"></tbody>
+    </table>
+  </div>
+  <p id="count" class="muted"></p>
+</main>
+<script src="js/config.js"></script>
+<script src="js/api.js"></script>
+<script src="js/catalog-common.js"></script>
+<script>
+const term = document.getElementById('term');
+const rows = document.getElementById('rows');
+const msg = document.getElementById('msg');
+const count = document.getElementById('count');
+let requestNo = 0;
+
+function availability(b) {
+  if (b.isDigitalResource) {
+    return Catalog.isWebUrl(b.accessUrl)
+      ? '<a href="' + Catalog.esc(b.accessUrl) + '" target="_blank" rel="noopener">Open e-book</a>'
+      : '<span class="badge">Digital</span>';
+  }
+  if (b.totalCopies === 0) return '<span class="badge">No copies</span>';
+  return b.availableNow > 0
+    ? '<span class="badge ok">' + b.availableNow + ' of ' + b.totalCopies + ' available</span>'
+    : '<span class="badge none">All ' + b.totalCopies + ' on loan / unavailable</span>';
+}
+
+function render(list) {
+  rows.innerHTML = list.map(b =>
+    '<tr><td><strong>' + Catalog.esc(b.title) + '</strong>' +
+    (b.isbn ? '<div class="muted">ISBN ' + Catalog.esc(b.isbn) + '</div>' : '') + '</td>' +
+    '<td>' + Catalog.esc(b.author) + '</td>' +
+    '<td>' + Catalog.esc(b.category) + '</td>' +
+    '<td>' + Catalog.esc(b.publicationYear ?? '') + '</td>' +
+    '<td>' + Catalog.esc(b.shelfLocation ?? '') + '</td>' +
+    '<td>' + availability(b) + '</td></tr>').join('');
+  count.textContent = list.length === 1 ? '1 title found.' : list.length + ' titles found.';
+}
+
+async function search() {
+  const mine = ++requestNo;
+  const r = await Catalog.send('GET', '/api/catalog/search?term=' + encodeURIComponent(term.value.trim()));
+  if (mine !== requestNo) return;          // ignore out-of-date answers
+  if (!r.ok) { rows.innerHTML = ''; count.textContent = ''; Catalog.show(msg, Catalog.errorText(r)); return; }
+  Catalog.show(msg, '');
+  render(r.data);
+}
+
+term.addEventListener('input', Catalog.debounce(search, 300));
+search();
+</script>
+</body>
+</html>
