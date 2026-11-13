@@ -1,8 +1,9 @@
-﻿namespace LibraryBookLendingSystem.Models.DTOs.Auth
+﻿using System.ComponentModel.DataAnnotations;
+
+namespace LibraryBookLendingSystem.Models.DTOs.Auth;
+
+public class LoginDto
 {
-    public class LoginDto
-    {
-        public string Username { get; set; } = null!;
-        public string Password { get; set; } = null!;
-    }
+    [Required] public string Username { get; set; } = string.Empty;
+    [Required] public string Password { get; set; } = string.Empty;
 }

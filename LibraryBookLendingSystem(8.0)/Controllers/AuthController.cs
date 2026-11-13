@@ -1,47 +1,60 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using LibraryBookLendingSystem.Data;
+﻿using LibraryBookLendingSystem.Data;
 using LibraryBookLendingSystem.Models.DTOs.Auth;
-using LibraryBookLendingSystem.Services;
+using LibraryBookLendingSystem.Models.Entities;
+using LibraryBookLendingSystem.Services.Interfaces;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
-namespace LibraryBookLendingSystem.Controllers
+namespace LibraryBookLendingSystem.Controllers;
+
+[Route("api/[controller]")]
+[ApiController]
+public class AuthController : ControllerBase
 {
-    [Route("api/[controller]")]
-    [ApiController]
-    public class AuthController : ControllerBase
+    private readonly AppDbContext _context;
+    private readonly ITokenService _tokenService;
+
+    public AuthController(AppDbContext context, ITokenService tokenService)
     {
-        private readonly LibraryDbContext _context;
-        private readonly ITokenService _tokenService;
+        _context = context;
+        _tokenService = tokenService;
+    }
 
-        public AuthController(LibraryDbContext context, ITokenService tokenService)
+    [HttpPost("login")]
+    public async Task<IActionResult> Login([FromBody] LoginDto dto)
+    {
+        var user = await _context.Users
+            .Include(u => u.UserRoles)
+            .ThenInclude(ur => ur.Role)
+            .FirstOrDefaultAsync(u => u.Username == dto.Username);
+
+        if (user is null)
+            return Unauthorized(new { message = "Invalid username or password." });
+
+        if (user.LockoutUntil is not null && user.LockoutUntil > DateTime.Now)
+            return StatusCode(423, new { message = "Account locked. Try again later." });
+
+        if (!BCrypt.Net.BCrypt.Verify(dto.Password, user.PasswordHash))
         {
-            _context = context;
-            _tokenService = tokenService;
+            user.FailedLoginCount++;
+            if (user.FailedLoginCount >= 5)
+                user.LockoutUntil = DateTime.Now.AddMinutes(15);
+            await _context.SaveChangesAsync();
+            return Unauthorized(new { message = "Invalid username or password." });
         }
 
-        [HttpPost("login")]
-        public async Task<IActionResult> Login([FromBody] LoginDto loginDto)
+        user.FailedLoginCount = 0;
+        user.LockoutUntil = null;
+        await _context.SaveChangesAsync();
+
+        var roles = user.UserRoles.Where(ur => ur.Role != null)
+                                  .Select(ur => ur.Role!.RoleName);
+        var token = _tokenService.CreateToken(user, roles);
+
+        return Ok(new
         {
-            var user = await _context.Users
-                .Include(u => u.UserRoles)
-                .ThenInclude(ur => ur.Role)
-                .FirstOrDefaultAsync(u => u.Username == loginDto.Username);
-
-            if (user == null || !BCrypt.Net.BCrypt.Verify(loginDto.Password, user.PasswordHash))
-            {
-                return Unauthorized(new { message = "Invalid username or password." });
-            }
-
-            var roles = user.UserRoles.Select(ur => ur.Role.RoleName).ToList();
-            var token = _tokenService.CreateToken(user, roles);
-
-            return Ok(new
-            {
-                username = user.Username,
-                email = user.Email,
-                token = token,
-                roles = roles
-            });
-        }
+            token,
+            user = new { user.UserId, user.Username, user.FullName, roles }
+        });
     }
 }

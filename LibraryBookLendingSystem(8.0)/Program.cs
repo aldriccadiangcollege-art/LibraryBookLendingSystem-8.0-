@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using LibraryBookLendingSystem.Services.Interfaces;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -61,8 +62,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     });
 
 builder.Services.AddAuthorization();
-builder.Services.AddScoped<LibraryBookLendingSystem.Security.JwtTokenService>();
-
+builder.Services.AddScoped<ITokenService, LibraryBookLendingSystem.Security.JwtTokenService>();
 var app = builder.Build();
 
 app.UseMiddleware<ExceptionHandlingMiddleware>();
