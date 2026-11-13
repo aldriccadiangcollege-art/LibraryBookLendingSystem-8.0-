@@ -1,21 +1,19 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
-namespace LibraryBookLendingSystem.Models.Entities
+namespace LibraryBookLendingSystem.Models.Entities;
+
+[Table("BookCopies")]
+public class BookCopy
 {
-    public class BookCopy
-    {
-        public int CopyId { get; set; }
-        public int BookId { get; set; }
-        public Book Book { get; set; } = null!;
-        public string AccessionNo { get; set; } = null!;
-        public string CopyStatus { get; set; } = "Available"; // Available, Damaged, Lost, Withdrawn
-        public string? ReviewRemarks { get; set; }
-        public DateOnly? WithdrawnOn { get; set; }
-        public int? WithdrawnBy { get; set; }
-        public User? WithdrawnByUser { get; set; }
-        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-
-        public ICollection<Loan> Loans { get; set; } = new List<Loan>();
-    }
+    [Key] public int CopyId { get; set; }
+    public int BookId { get; set; }
+    [ForeignKey(nameof(BookId))] public Book? Book { get; set; }
+    [Required, MaxLength(30)] public string AccessionNo { get; set; } = string.Empty;
+    [Required, MaxLength(20)] public string CopyStatus { get; set; } = "Available";
+    [MaxLength(255)] public string? ReviewRemarks { get; set; }
+    public DateTime? WithdrawnOn { get; set; }
+    public int? WithdrawnBy { get; set; }
+    [ForeignKey(nameof(WithdrawnBy))] public User? WithdrawnByUser { get; set; }
+    public DateTime CreatedAt { get; set; } = DateTime.Now;
 }
