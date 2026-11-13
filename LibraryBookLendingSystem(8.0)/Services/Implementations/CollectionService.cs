@@ -2,6 +2,7 @@
 using LibraryBookLendingSystem.Data;
 using LibraryBookLendingSystem_8._0_.Models.DTOs.Books;
 using LibraryBookLendingSystem_8._0_.Services.Interfaces;
+using LibraryBookLendingSystem.Services.Interfaces;
 
 namespace LibraryBookLendingSystem_8._0_.Services.Implementations
 {
