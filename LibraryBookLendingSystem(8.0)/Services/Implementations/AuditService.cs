@@ -1,5 +1,6 @@
 ﻿using LibraryBookLendingSystem_8._0_.Data;
 using LibraryBookLendingSystem_8._0_.Models.Entities;
+using LibraryBookLendingSystem_8._0_.Models.DTOs.Books;
 
 namespace LibraryBookLendingSystem_8._0_.Services.Implementations
 {
