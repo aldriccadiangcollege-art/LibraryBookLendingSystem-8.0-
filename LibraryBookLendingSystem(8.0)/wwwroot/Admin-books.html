@@ -1,0 +1,271 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Manage Books</title>
+    <link rel="stylesheet" href="css/catalog.css">
+</head>
+<body>
+    <header class="topbar"><strong>Library</strong><nav><a href="catalog.html">Search catalog</a><a href="admin-books.html">Manage books</a><a href="collection-review.html">Collection review</a></nav></header>
+    <main>
+        <h1>Manage books</h1>
+        <div class="toolbar">
+            <input id="term" type="search" placeholder="Search title, author, category or ISBN">
+            <button id="addBtn">Add book</button>
+            <button id="exportBtn" class="secondary">Export CSV</button>
+            <label class="btn secondary">Import CSV<input id="importFile" type="file" accept=".csv" hidden></label>
+        </div>
+        <div id="msg" class="msg" hidden></div>
+
+        <div id="importPanel" hidden>
+            <div id="importSummary" class="msg"></div>
+            <div class="table-wrap" id="importErrors" hidden>
+                <table>
+                    <thead><tr><th>Row</th><th>Column</th><th>Problem</th></tr></thead>
+                    <tbody id="importRows"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="table-wrap">
+            <table>
+                <thead><tr><th>Title</th><th>Author</th><th>Category</th><th>Year</th><th>ISBN</th><th>Copies</th><th>Actions</th></tr></thead>
+                <tbody id="rows"></tbody>
+            </table>
+        </div>
+    </main>
+
+    <!-- Add / edit book -->
+    <dialog id="bookDialog">
+        <h2 id="bookTitle">Add book</h2>
+        <form id="bookForm" novalidate>
+            <div class="grid2">
+                <label class="full">Title *<input type="text" id="f_title" maxlength="250"></label>
+                <label>Author *<input type="text" id="f_author" maxlength="150"></label>
+                <label>Category *<input type="text" id="f_category" maxlength="80"></label>
+                <label>ISBN<input type="text" id="f_isbn" maxlength="20" placeholder="978-971-50-8016-6"></label>
+                <label>Publisher<input type="text" id="f_publisher" maxlength="150"></label>
+                <label>Publication year<input type="number" id="f_year" min="1400" max="2100"></label>
+                <label>Shelf location<input type="text" id="f_shelf" maxlength="50"></label>
+                <label class="full"><span><input type="checkbox" id="f_digital"> E-library title (digital only, cannot be lent)</span></label>
+                <label class="full">Access URL (required for digital titles)<input type="url" id="f_url" maxlength="500" placeholder="https://"></label>
+            </div>
+            <div id="bookMsg" class="msg" hidden></div>
+            <div class="dialog-actions">
+                <button type="button" class="secondary" id="bookCancel">Cancel</button>
+                <button type="submit">Save</button>
+            </div>
+        </form>
+    </dialog>
+
+    <!-- Copies of one book -->
+    <dialog id="copiesDialog">
+        <h2 id="copiesTitle">Copies</h2>
+        <div class="inline-form">
+            <input type="text" id="newAccession" maxlength="30" placeholder="New accession no. e.g. ACC-005-01">
+            <button id="addCopyBtn" type="button">Add copy</button>
+        </div>
+        <div id="statusForm" class="inline-form" hidden>
+            <strong id="statusFor"></strong>
+            <select id="statusSelect">
+                <option>Available</option>
+                <option>Damaged</option>
+                <option>Lost</option>
+                <option>Withdrawn</option>
+            </select>
+            <input type="text" id="statusRemarks" maxlength="255" placeholder="Remarks (required unless Available)">
+            <button type="button" id="statusSave" class="small">Save status</button>
+            <button type="button" id="statusCancel" class="small secondary">Cancel</button>
+        </div>
+        <div id="copiesMsg" class="msg" hidden></div>
+        <div class="table-wrap">
+            <table>
+                <thead><tr><th>Accession no.</th><th>Status</th><th>Remarks</th><th>Withdrawn</th><th>Actions</th></tr></thead>
+                <tbody id="copyRows"></tbody>
+            </table>
+        </div>
+        <div class="dialog-actions"><button type="button" class="secondary" id="copiesClose">Close</button></div>
+    </dialog>
+
+    <script src="js/config.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/catalog-common.js"></script>
+    <script>
+const $ = (id) => document.getElementById(id);
+let books = [];
+let editingId = null;     // null = adding
+let currentBook = null;   // book whose copies are open
+let copies = [];
+let statusCopyId = null;
+
+/* ---------------- books list ---------------- */
+async function loadBooks() {
+  const r = await Catalog.send('GET', '/api/books?term=' + encodeURIComponent($('term').value.trim()));
+  if (!r.ok) { Catalog.show($('msg'), Catalog.errorText(r)); return; }
+  Catalog.show($('msg'), '');
+  books = r.data;
+  $('rows').innerHTML = books.length ? books.map(b =>
+    '<tr><td><strong>' + Catalog.esc(b.title) + '</strong>' + (b.isDigitalResource ? ' <span class="badge">Digital</span>' : '') + '</td>' +
+    '<td>' + Catalog.esc(b.author) + '</td><td>' + Catalog.esc(b.category) + '</td>' +
+    '<td>' + Catalog.esc(b.publicationYear ?? '') + '</td><td>' + Catalog.esc(b.isbn ?? '') + '</td>' +
+    '<td>' + (b.isDigitalResource ? '-' : b.availableNow + ' / ' + b.totalCopies) + '</td>' +
+    '<td class="actions">' +
+      '<button class="small secondary" data-act="copies" data-id="' + b.bookId + '"' + (b.isDigitalResource ? ' disabled' : '') + '>Copies</button>' +
+      '<button class="small secondary" data-act="edit" data-id="' + b.bookId + '">Edit</button>' +
+      '<button class="small danger" data-act="delete" data-id="' + b.bookId + '">Delete</button>' +
+    '</td></tr>').join('')
+    : '<tr><td colspan="7" class="muted">No books found.</td></tr>';
+}
+
+$('rows').addEventListener('click', async (e) => {
+  const btn = e.target.closest('button[data-act]');
+  if (!btn) return;
+  const book = books.find(b => b.bookId === Number(btn.dataset.id));
+  if (!book) return;
+  if (btn.dataset.act === 'edit') openBookForm(book);
+  if (btn.dataset.act === 'copies') openCopies(book);
+  if (btn.dataset.act === 'delete') {
+    if (!confirm('Delete "' + book.title + '"? This cannot be undone.')) return;
+    const r = await Catalog.send('DELETE', '/api/books/' + book.bookId);
+    if (r.ok) { Catalog.show($('msg'), 'Book deleted.', 'success'); loadBooks(); }
+    else Catalog.show($('msg'), Catalog.errorText(r));
+  }
+});
+
+$('term').addEventListener('input', Catalog.debounce(loadBooks, 300));
+
+/* ---------------- add / edit form ---------------- */
+function openBookForm(book) {
+  editingId = book ? book.bookId : null;
+  $('bookTitle').textContent = book ? 'Edit book' : 'Add book';
+  $('f_title').value = book?.title ?? '';
+  $('f_author').value = book?.author ?? '';
+  $('f_category').value = book?.category ?? '';
+  $('f_isbn').value = book?.isbn ?? '';
+  $('f_publisher').value = book?.publisher ?? '';
+  $('f_year').value = book?.publicationYear ?? '';
+  $('f_shelf').value = book?.shelfLocation ?? '';
+  $('f_digital').checked = !!book?.isDigitalResource;
+  $('f_url').value = book?.accessUrl ?? '';
+  Catalog.show($('bookMsg'), '');
+  $('bookDialog').showModal();
+}
+
+$('addBtn').addEventListener('click', () => openBookForm(null));
+$('bookCancel').addEventListener('click', () => $('bookDialog').close());
+
+$('bookForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const body = {
+    title: $('f_title').value, author: $('f_author').value, category: $('f_category').value,
+    isbn: $('f_isbn').value, publisher: $('f_publisher').value,
+    publicationYear: $('f_year').value === '' ? null : Number($('f_year').value),
+    shelfLocation: $('f_shelf').value, isDigitalResource: $('f_digital').checked, accessUrl: $('f_url').value
+  };
+  const r = editingId === null
+    ? await Catalog.send('POST', '/api/books', body)
+    : await Catalog.send('PUT', '/api/books/' + editingId, body);
+  if (!r.ok) { Catalog.show($('bookMsg'), Catalog.errorText(r)); return; }
+  $('bookDialog').close();
+  Catalog.show($('msg'), editingId === null ? 'Book added.' : 'Book updated.', 'success');
+  loadBooks();
+});
+
+/* ---------------- copies ---------------- */
+async function openCopies(book) {
+  currentBook = book;
+  $('copiesTitle').textContent = 'Copies of "' + book.title + '"';
+  $('newAccession').value = '';
+  hideStatusForm();
+  Catalog.show($('copiesMsg'), '');
+  $('copiesDialog').showModal();
+  await loadCopies();
+}
+
+async function loadCopies() {
+  const r = await Catalog.send('GET', '/api/books/' + currentBook.bookId + '/copies');
+  if (!r.ok) { Catalog.show($('copiesMsg'), Catalog.errorText(r)); return; }
+  copies = r.data;
+  const cls = { Available: 'ok', Damaged: 'warn', Lost: 'bad', Withdrawn: '' };
+  $('copyRows').innerHTML = copies.length ? copies.map(c =>
+    '<tr><td>' + Catalog.esc(c.accessionNo) + '</td>' +
+    '<td><span class="badge ' + (cls[c.copyStatus] ?? '') + '">' + Catalog.esc(c.copyStatus) + '</span>' +
+      (c.onLoan ? ' <span class="badge">On loan</span>' : '') + '</td>' +
+    '<td>' + Catalog.esc(c.reviewRemarks ?? '') + '</td>' +
+    '<td>' + (c.withdrawnOn ? Catalog.esc(c.withdrawnOn) + ' by ' + Catalog.esc(c.withdrawnByName ?? 'unknown') : '') + '</td>' +
+    '<td class="actions"><button class="small secondary" data-act="status" data-id="' + c.copyId + '">Change status</button>' +
+    '<button class="small danger" data-act="delcopy" data-id="' + c.copyId + '">Delete</button></td></tr>').join('')
+    : '<tr><td colspan="5" class="muted">No copies yet.</td></tr>';
+  loadBooks();   // keep the copies count in the main table fresh
+}
+
+$('addCopyBtn').addEventListener('click', async () => {
+  const r = await Catalog.send('POST', '/api/books/' + currentBook.bookId + '/copies', { accessionNo: $('newAccession').value });
+  if (!r.ok) { Catalog.show($('copiesMsg'), Catalog.errorText(r)); return; }
+  $('newAccession').value = '';
+  Catalog.show($('copiesMsg'), 'Copy added.', 'success');
+  loadCopies();
+});
+
+$('copyRows').addEventListener('click', async (e) => {
+  const btn = e.target.closest('button[data-act]');
+  if (!btn) return;
+  const copy = copies.find(c => c.copyId === Number(btn.dataset.id));
+  if (!copy) return;
+  if (btn.dataset.act === 'status') {
+    statusCopyId = copy.copyId;
+    $('statusFor').textContent = copy.accessionNo;
+    $('statusSelect').value = copy.copyStatus;
+    $('statusRemarks').value = copy.reviewRemarks ?? '';
+    $('statusForm').hidden = false;
+  }
+  if (btn.dataset.act === 'delcopy') {
+    if (!confirm('Delete copy ' + copy.accessionNo + '?')) return;
+    const r = await Catalog.send('DELETE', '/api/copies/' + copy.copyId);
+    if (r.ok) { Catalog.show($('copiesMsg'), 'Copy deleted.', 'success'); loadCopies(); }
+    else Catalog.show($('copiesMsg'), Catalog.errorText(r));
+  }
+});
+
+function hideStatusForm() { statusCopyId = null; $('statusForm').hidden = true; }
+$('statusCancel').addEventListener('click', hideStatusForm);
+$('statusSave').addEventListener('click', async () => {
+  const r = await Catalog.send('PATCH', '/api/copies/' + statusCopyId + '/status',
+    { status: $('statusSelect').value, remarks: $('statusRemarks').value });
+  if (!r.ok) { Catalog.show($('copiesMsg'), Catalog.errorText(r)); return; }
+  hideStatusForm();
+  Catalog.show($('copiesMsg'), 'Status updated.', 'success');
+  loadCopies();
+});
+$('copiesClose').addEventListener('click', () => $('copiesDialog').close());
+
+/* ---------------- CSV export / import ---------------- */
+$('exportBtn').addEventListener('click', async () => {
+  try { await Catalog.download('/api/books/export', 'books.csv'); Catalog.show($('msg'), ''); }
+  catch (err) { Catalog.show($('msg'), err.message); }
+});
+
+$('importFile').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  e.target.value = '';                       // allow choosing the same file again
+  if (!file) return;
+  const form = new FormData();
+  form.append('file', file);
+  const r = await Catalog.upload('/api/books/import', form);
+
+  const panel = $('importPanel');
+  const errors = r.data?.errors ?? [];
+  panel.hidden = false;
+  Catalog.show($('importSummary'), r.ok ? (r.data?.message ?? 'Import finished.') : (r.data?.message ?? Catalog.errorText(r)),
+               r.ok ? 'success' : 'error');
+  $('importErrors').hidden = errors.length === 0;
+  $('importRows').innerHTML = errors.map(x =>
+    '<tr><td>' + x.row + '</td><td>' + Catalog.esc(x.field ?? '') + '</td><td>' + Catalog.esc(x.message) + '</td></tr>').join('');
+  if (r.ok) loadBooks();
+});
+
+loadBooks();
+    </script>
+</body>
+</html>
