@@ -1,11 +1,12 @@
-﻿namespace LibraryBookLendingSystem.Models.Entities
-{
-    public class UserRole
-    {
-        public int UserId { get; set; }
-        public User User { get; set; } = null!;
+﻿using System.ComponentModel.DataAnnotations.Schema;
 
-        public int RoleId { get; set; }
-        public Role Role { get; set; } = null!;
-    }
+namespace LibraryBookLendingSystem.Models.Entities;
+
+[Table("UserRoles")]
+public class UserRole
+{
+    public int UserId { get; set; }
+    [ForeignKey(nameof(UserId))] public User? User { get; set; }
+    public int RoleId { get; set; }
+    [ForeignKey(nameof(RoleId))] public Role? Role { get; set; }
 }
