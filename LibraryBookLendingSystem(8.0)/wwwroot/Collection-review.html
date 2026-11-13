@@ -1,0 +1,77 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Collection Review</title>
+    <link rel="stylesheet" href="css/catalog.css">
+</head>
+<body>
+    <header class="topbar"><strong>Library</strong><nav><a href="catalog.html">Search catalog</a><a href="admin-books.html">Manage books</a><a href="collection-review.html">Collection review</a></nav></header>
+    <main>
+        <h1>Collection review</h1>
+        <p class="muted">Outdated = published 10 or more years ago. Duplicate = same title and author recorded more than once.</p>
+        <div id="cards" class="cards"></div>
+        <div class="toolbar">
+            <label>
+                Show
+                <select id="filter">
+                    <option value="">All titles</option>
+                    <option value="outdated">Outdated</option>
+                    <option value="duplicates">Duplicates</option>
+                    <option value="damaged">With damaged copies</option>
+                    <option value="lost">With lost copies</option>
+                    <option value="withdrawn">With withdrawn copies</option>
+                </select>
+            </label>
+        </div>
+        <div id="msg" class="msg" hidden></div>
+        <div class="table-wrap">
+            <table>
+                <thead><tr><th>Title</th><th>Author</th><th>Category</th><th>Year</th><th>Copies</th><th>Available</th><th>On loan</th><th>Damaged</th><th>Lost</th><th>Withdrawn</th><th>Flags</th></tr></thead>
+                <tbody id="rows"></tbody>
+            </table>
+        </div>
+    </main>
+    <script src="js/config.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/catalog-common.js"></script>
+    <script>
+const filter = document.getElementById('filter');
+const rows = document.getElementById('rows');
+const cards = document.getElementById('cards');
+const msg = document.getElementById('msg');
+
+function renderCards(s) {
+  const items = [['Titles', s.totalTitles], ['Copies', s.totalCopies], ['Outdated titles', s.outdatedTitles],
+    ['Duplicate titles', s.duplicateTitles], ['Damaged copies', s.damagedCopies], ['Lost copies', s.lostCopies],
+    ['Withdrawn copies', s.withdrawnCopies]];
+  cards.innerHTML = items.map(([label, n]) =>
+    '<div class="card"><div class="n">' + n + '</div><div class="muted">' + label + '</div></div>').join('');
+}
+
+function renderRows(list) {
+  rows.innerHTML = list.length ? list.map(i =>
+    '<tr><td>' + Catalog.esc(i.title) + (i.isDigitalResource ? ' <span class="badge">Digital</span>' : '') + '</td>' +
+    '<td>' + Catalog.esc(i.author) + '</td><td>' + Catalog.esc(i.category) + '</td>' +
+    '<td>' + Catalog.esc(i.publicationYear ?? '') + '</td>' +
+    '<td>' + i.totalCopies + '</td><td>' + i.availableNow + '</td><td>' + i.onLoan + '</td>' +
+    '<td>' + i.damagedCopies + '</td><td>' + i.lostCopies + '</td><td>' + i.withdrawnCopies + '</td>' +
+    '<td>' + (i.isOutdated ? '<span class="badge warn">Outdated</span> ' : '') +
+             (i.isDuplicateTitle ? '<span class="badge warn">Duplicate</span>' : '') + '</td></tr>').join('')
+    : '<tr><td colspan="11" class="muted">No titles match this filter.</td></tr>';
+}
+
+async function load() {
+  const r = await Catalog.send('GET', '/api/collection/review' + (filter.value ? '?filter=' + filter.value : ''));
+  if (!r.ok) { Catalog.show(msg, Catalog.errorText(r)); return; }
+  Catalog.show(msg, '');
+  renderCards(r.data.summary);
+  renderRows(r.data.items);
+}
+
+filter.addEventListener('change', load);
+load();
+    </script>
+</body>
+</html>
